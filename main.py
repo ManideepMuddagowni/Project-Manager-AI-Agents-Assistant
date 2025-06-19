@@ -163,22 +163,20 @@ if st.button("🚀 Submit and Run Workflow"):
         st.markdown(style_result_box("#F8D7DA"), unsafe_allow_html=True)
 
         risk_data = risk_assessment_node({
-            "tasks": st.session_state.tasks,
-            "task_allocations": st.session_state.task_allocations,
-        })
+        "tasks": st.session_state.tasks,
+        "task_allocations": st.session_state.task_allocations,
+    })
 
-        # Show raw response for debugging
-        st.markdown("**Raw AI Response:**")
-        st.code(risk_data.get("response", "No response"), language="json")
+    st.markdown("### ⚠️ Risk Assessment Agent Output (Plain Text):")
+    st.text(risk_data.get("response", "No response"))
 
-        # Show parsed JSON risks and score
-        st.json(risk_data.get("risks", []))
-        st.write(f"**Overall Project Risk Score:** {risk_data.get('project_risk_score', 0)}")
+    # Since no parsed JSON, just clear these or show nothing
+    st.write("Risks data not available in plain text mode.")
+    st.write("Project risk score not available in plain text mode.")
 
-        st.markdown(close_div(), unsafe_allow_html=True)
+    st.session_state.risks = []
+    st.session_state.project_risk_score = None
 
-    st.session_state.risks = risk_data.get("risks", [])
-    st.session_state.project_risk_score = risk_data.get("project_risk_score", 0)
 
     # Step 6: Insight Generation
     status_container.markdown(get_status_md(5))
