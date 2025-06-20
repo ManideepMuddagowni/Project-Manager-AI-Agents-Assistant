@@ -13,7 +13,6 @@ This project is an AI-powered Project Management assistant built using **Streaml
 - ⚠️ Risk assessment and insight generation
 - 📊 Syncs all updates to **Airtable**
 - 🔄 Export final structured output as CSV
-- ✅ Integrated CI pipeline using GitHub Actions
 
 ## 📦 Installation
 
