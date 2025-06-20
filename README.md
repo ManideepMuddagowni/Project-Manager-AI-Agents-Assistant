@@ -54,6 +54,16 @@ AIRTABLE_BASE_ID=your_airtable_base_id
 > Or add them as **secrets** in the Streamlit Cloud app dashboard.
 
 
+## 🔐 API Key Setup
+
+Use a `.env` file in the root:
+
+```env
+OPENAI_API_KEY=your-openai-key
+GROQ_API_KEY = groq-api-key
+
+```
+
 ---
 
 ## 📊 Deployment
