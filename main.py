@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
-import io
 
+# Import utils and AI agents as before
 from utils.json_utils import extract_json_array
 from ai_agents.task_generation_agent import task_generation_node
 from ai_agents.task_allocation_agent import task_allocation_node
@@ -10,21 +10,16 @@ from ai_agents.task_scheduler_agent import task_scheduler_node
 from ai_agents.risk_assesment_agent import risk_assessment_node
 from ai_agents.insight_generation import insight_generation_node
 
-# --- Utility: parse uploaded CSV ---
-def parse_csv(file):
-    df = pd.read_csv(file)
-    team = []
-    if 'Name' not in df.columns or 'Profile Description' not in df.columns:
-        st.error("CSV must have columns: 'Name' and 'Profile Description'")
-        return []
-    for _, row in df.iterrows():
-        name = str(row['Name']).strip()
-        profile = str(row['Profile Description']).strip()
-        skills = [skill.strip().lower() for skill in profile.split(",") if skill.strip()]
-        team.append({"name": name, "skills": skills})
-    return team
+# Import Airtable and CSV services from snippet 2
+from services.csv_service import parse_csv, create_output_csv
+from services.airtable_service import (
+    get_airtable_table,
+    save_team_to_airtable,
+    update_team_with_tasks,
+    clear_airtable_table
+)
 
-# --- Utility: styled box ---
+# --- Your existing utility functions from snippet 1 ---
 def style_result_box(color):
     return f"""
         <div style="
@@ -38,11 +33,9 @@ def style_result_box(color):
             overflow-x: auto;
         ">
     """
-
 def close_div():
     return "</div>"
 
-# --- Workflow steps ---
 agents = [
     "Task Generation",
     "Task Dependency Identification",
@@ -65,15 +58,16 @@ def get_status_md(current_step):
 
 # --- Main App ---
 st.set_page_config(layout="wide")
-st.title("🧠 Project Management AI Agent with CSV Upload")
+st.title("🧠 Project Management AI Agent with Airtable Integration")
 
-# CSV Upload
+# CSV Upload + Airtable save
 uploaded_file = st.file_uploader("Upload CSV with 'Name' and 'Profile Description'", type=["csv"])
 if uploaded_file:
     team_data = parse_csv(uploaded_file)
     if team_data:
         st.session_state.team = team_data
-        st.success(f"Loaded {len(team_data)} team members from CSV")
+        save_team_to_airtable(team_data)  # Save team to Airtable immediately on upload
+        st.success(f"Loaded {len(team_data)} team members from CSV and saved to Airtable.")
 
 # Project Description Input
 if "project_description" not in st.session_state:
@@ -114,7 +108,6 @@ if st.button("🚀 Submit and Run Workflow"):
 
         dep_data = task_dependency_node({"tasks": st.session_state.tasks})
 
-        # Show raw AI response for debugging
         st.markdown("**Raw AI Response:**")
         st.code(dep_data.get("response", "No response"), language="json")
 
@@ -122,7 +115,6 @@ if st.button("🚀 Submit and Run Workflow"):
         if not dependencies:
             st.warning("No dependencies extracted or parsing failed.")
         else:
-            # Display parsed dependencies nicely
             df_deps = pd.DataFrame(dependencies)
             st.dataframe(df_deps)
 
@@ -163,20 +155,18 @@ if st.button("🚀 Submit and Run Workflow"):
         st.markdown(style_result_box("#F8D7DA"), unsafe_allow_html=True)
 
         risk_data = risk_assessment_node({
-        "tasks": st.session_state.tasks,
-        "task_allocations": st.session_state.task_allocations,
-    })
+            "tasks": st.session_state.tasks,
+            "task_allocations": st.session_state.task_allocations,
+        })
 
-    st.markdown("### ⚠️ Risk Assessment Agent Output (Plain Text):")
-    st.text(risk_data.get("response", "No response"))
+        st.markdown("### ⚠️ Risk Assessment Agent Output (Plain Text):")
+        st.text(risk_data.get("response", "No response"))
 
-    # Since no parsed JSON, just clear these or show nothing
-    st.write("Risks data not available in plain text mode.")
-    st.write("Project risk score not available in plain text mode.")
+        st.write("Risks data not available in plain text mode.")
+        st.write("Project risk score not available in plain text mode.")
 
-    st.session_state.risks = []
-    st.session_state.project_risk_score = None
-
+        st.session_state.risks = []
+        st.session_state.project_risk_score = None
 
     # Step 6: Insight Generation
     status_container.markdown(get_status_md(5))
@@ -194,12 +184,31 @@ if st.button("🚀 Submit and Run Workflow"):
         st.markdown(close_div(), unsafe_allow_html=True)
     st.session_state.insights = insights
 
+    # Update Airtable with all workflow outputs
+    update_team_with_tasks(
+        st.session_state.task_allocations,
+        st.session_state.schedule,
+        st.session_state.dependencies,
+        risk_data.get("response", ""),
+        insights
+    )
+
     # Final step complete - show completion after all done
     status_container.markdown(get_status_md(len(agents)))
     st.success("🎉 Workflow completed successfully!")
     st.balloons()
 
-# --- Tabs to show persistent results ---
+    # Provide Download CSV button for updated Airtable data
+    output_df = create_output_csv(st.session_state.team, get_airtable_table())
+    csv = output_df.to_csv(index=False).encode("utf-8")
+    st.download_button("📥 Download Updated Team CSV", data=csv, file_name="updated_team_tasks.csv")
+
+# Clear Airtable Table button outside workflow to allow manual clearing
+if st.button("🗑️ Clear Airtable Table"):
+    clear_airtable_table()
+    st.success("✅ Airtable table cleared.")
+
+# --- Tabs for results (same as your original snippet) ---
 tabs = st.tabs([
     "🧠 Task Generation",
     "🔗 Task Dependencies",
