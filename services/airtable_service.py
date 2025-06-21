@@ -52,12 +52,13 @@ def update_team_with_tasks(task_allocations, schedule, dependencies, risk_text, 
             member_updates[member_name]["tasks"].append(task.get("task", ""))
 
             sched_item = next(
-                (item for item in schedule if item.get("task", "") == task.get("task", "")),
+                (item for item in schedule if item.get("name", "") == task.get("task", "")),
                 {}
             )
-            sched_str = sched_item.get("schedule", "")
-            if sched_str:
+            if sched_item:
+                sched_str = f"{sched_item['start_day']}–{sched_item['end_day']}"
                 member_updates[member_name]["schedules"].append(sched_str)
+
 
             dep_list = [
                 dep.get("depends_on", "") for dep in dependencies if dep.get("task", "") == task.get("task", "")
@@ -98,3 +99,4 @@ def clear_airtable_table():
             table.delete(record['id'])
         except Exception as e:
             st.error(f"Failed to delete record {record['id']}: {e}")
+    
